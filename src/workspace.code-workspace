@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "..\\.."
+		},
+		{
+			"name": "Bachelorproef_Micro",
+			"path": "..\\..\\Bachelorproef_Micro"
+		},
+		{
+			"name": "Bachelorproef_Microfoon",
+			"path": ".."
+		},
+		{
+			"name": "Bachelorproef_Button",
+			"path": "..\\..\\Bachelorproef_Button"
+		}
+	],
+	"settings": {}
+}
