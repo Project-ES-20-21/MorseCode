@@ -1,17 +1,19 @@
-//effe testen
 #include <Arduino.h>
 #include <LiquidCrystal_I2C.h>
 #include <ezButton.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
+#include <string>
+#include <sstream>
+using namespace std;
 
 LiquidCrystal_I2C lcd(0x27, 21, 4);
 WiFiClient espClient;
 
-#define SSID          "Sarah" ///*"NETGEAR68"*/ "DESKTOP-CEC32AM 8066"        //naam
-#define PWD           "yoloxdxp" ///*"excitedtuba713"*/ "]16b571H"   //wachtwoord
+#define SSID          "OnePlus jeff" ///*"NETGEAR68"*/ "DESKTOP-CEC32AM 8066"        //naam
+#define PWD           "jeffhotspot" ///*"excitedtuba713"*/ "]16b571H"   //wachtwoord
 
-#define MQTT_SERVER   "172.20.10.3"
+#define MQTT_SERVER   "broker.hivemq.com"
 #define MQTT_PORT     1883
 
 PubSubClient client(espClient);
@@ -19,6 +21,8 @@ PubSubClient client(espClient);
 #define STIL 0
 #define KORT 1
 #define LANG 2
+
+int test = 0;
 
 int langSignaal = 45;
 int kortSignaal = 16;
@@ -35,11 +39,12 @@ int loper = 0;
 int loper_morse = 0;
 int loper_display = 0;
 int lengte_morse = 0;
+int loper_binnenkomend = 0;
 
 int lengteMorse = 44;
 int morse[44] = {0};
 
-int binnenkomend[44] = {0, 1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 2};
+int binnenkomend[44] = {0}; //{0, 1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 2};
 char binnenkomend_char[44] = {'0'};
 
 int vorige_waarde = 0;
@@ -61,7 +66,7 @@ void callback(char *topic, byte *message, unsigned int length)
   Serial.print(topic);
   Serial.print(". Message: ");
   String messageTemp;
-  int messageTempArray[lengteMorse];
+  //int messageTempArray[lengteMorse];
 
   for (int i = 0; i < length; i++)
   {
@@ -75,25 +80,39 @@ void callback(char *topic, byte *message, unsigned int length)
 
   // If a message is received on the topic esp32/control, you check if the message is either "start" or "stop" (or "reset").
   // Changes the state according to the message
-  if (String(topic) == "esp32/morse/control"){
+  if (String(topic) == "esp32/control"){
     if(messageTemp.equals("0")){ //reset
-      //niets eigenlijk
+      Serial.println("Reset");
+      for (int i = 0; i<44; i++){
+        binnenkomend[i] = 0;
+      }
     }
     if(messageTemp.equals("1")){ //stop (afstand)
       pauze_afstand = 1;
+      Serial.println("pauze_afstand");
     }
     if(messageTemp.equals("2")){ //start (ontsmetten)
       pauze_afstand = 0;
+      Serial.println("pauze_afstand");
     }
     if(messageTemp.equals("3")){ //poweroff (stop fitness)
       pauze_fitness = 1;
+      Serial.println("pauze_fitness");
     }
     if(messageTemp.equals("4")){ //poweron (start fitness)
       pauze_fitness = 0;
+      Serial.println("pauze_fitness");     
     }
   }
   else if (String(topic) = "esp32/morse/intern"){
-    for(int i = 0; i<sizeof(messageTempArray); i++){
+    binnenkomend[loper_binnenkomend] = atoi(messageTemp.c_str());
+    loper_binnenkomend++;
+    
+    for (int i = 0; i<44; i++){
+  Serial.print(binnenkomend[i]);
+  }
+    
+    /*for(int i = 0; i<sizeof(messageTempArray); i++){
       binnenkomend_char[i] = messageTempArray[i];
     }
     //omzetten naar integer
@@ -102,7 +121,7 @@ void callback(char *topic, byte *message, unsigned int length)
     for (int i = 44; i >= 0; i--) {
       binnenkomend[i] = volledig_int % 10;
       volledig_int /= 10;
-    } 
+    } */
   }
 }
 
@@ -134,11 +153,12 @@ void reconnect(){
   {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect("Morse_Micro"))
+    if (client.connect("Morse_micro"))
     {
       Serial.println("connected");
       // Subscribe
-      client.subscribe("esp32/output");
+      client.subscribe("esp32/control");
+      client.subscribe ("esp32/morse/intern");
     }
     else
     {
@@ -258,7 +278,8 @@ void vergelijk(){
     lcd.print("6");
     lcd.setCursor(0,2);
     lcd.print("Boekenrek");
-    client.publish("esp32/morse/intern", "correcte code");
+    client.publish("esp32/morse/intern", "correct");
+    client.publish("esp32/morse/output", "einde_morse");
   } 
 }
 
@@ -269,15 +290,23 @@ void vergelijk(){
           // callback function, only used when receiving messages
 *********************************/
 void loop() {
+    /*String messageTemp = "3";
+    binnenkomend[loper_binnenkomend] = atoi(messageTemp.c_str());
+    Serial.print(binnenkomend[loper_binnenkomend]);
+    loper_binnenkomend++;
+*/
 
-client.publish("esp32/morse/control", "correcte code");
 
 //////////////////////////////////wifi connect
 if (!client.connected()){
   reconnect();
 }
  client.loop();
-
+ if (test == 0){
+  client.publish("esp32/morse/intern", "correcte code");
+  Serial.print("doorgestuurd");
+  test++;
+}
   button.loop();
   if(button.isPressed()){
     //volgorde = {100};
@@ -286,6 +315,10 @@ if (!client.connected()){
       Serial.print(morse[i]);
       Serial.print(" \t");
       loper_morse = 0;
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////klopt deze?
+    for (int i = 0; i<100; i++){ //limiet zeker nakijken
+      volgorde[i] = {0};
     }
     lcd.clear();
     loper_display = 0;
