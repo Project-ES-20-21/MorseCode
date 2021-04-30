@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <string>
 #include <sstream>
+#include <iostream>
 using namespace std;
 
 LiquidCrystal_I2C lcd(0x27, 21, 4);
@@ -25,7 +26,7 @@ PubSubClient client(espClient);
 int test = 0;
 
 int langSignaal = 45;
-int kortSignaal = 16;
+int kortSignaal = 10;
 int stilteSignaal = 3;
 
 const int pin = 34;
@@ -46,6 +47,9 @@ int morse[44] = {0};
 
 int binnenkomend[44] = {0}; //{0, 1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 2};
 char binnenkomend_char[44] = {'0'};
+
+int eerste_keer = 1;
+int random_alohomora = 0;
 
 int vorige_waarde = 0;
 int som_alternatief = 0;
@@ -108,20 +112,14 @@ void callback(char *topic, byte *message, unsigned int length)
     binnenkomend[loper_binnenkomend] = atoi(messageTemp.c_str());
     loper_binnenkomend++;
     
-    for (int i = 0; i<44; i++){
+    /*for (int i = 0; i<44; i++){
   Serial.print(binnenkomend[i]);
+  }*/
   }
-    
-    /*for(int i = 0; i<sizeof(messageTempArray); i++){
-      binnenkomend_char[i] = messageTempArray[i];
+  else if (String(topic) == "esp32/fitness/telefoon"){
+    if(messageTemp.equals("BEL")){
+      lcd.backlight();
     }
-    //omzetten naar integer
-    int volledig_int = atoi(binnenkomend_char);
-    //integer omzetten naar array van integers
-    for (int i = 44; i >= 0; i--) {
-      binnenkomend[i] = volledig_int % 10;
-      volledig_int /= 10;
-    } */
   }
 }
 
@@ -182,7 +180,7 @@ void setup() {
   // initialize LCD
   lcd.init();
   // turn on LCD backlight                      
-  lcd.backlight();
+  //lcd.backlight(); --> pas wanneer het aan deze puzzel is
 
   setup_wifi();
   client.setServer(MQTT_SERVER, MQTT_PORT);
@@ -208,7 +206,7 @@ int som(int rij[100]){
 }
 
 void voegToe(int aV){
-  //elke waarde toevoegen aan de array, tot 6, omdat het max signaal max 6 samples duurt
+  //elke waarde toevoegen aan de array
   if(loper < 100){
     vorige_waarde = volgorde[loper];
     volgorde[loper] = aV;
@@ -263,31 +261,50 @@ void voegToeMorse(int signaal){
   }
 }
 
-void vergelijk(){
-  bool vergelijk_bool[lengteMorse] = {false};
-  int teller = 0;
-  for (int i = 0; i<lengteMorse; i++){
-    if(morse[i] == binnenkomend[i]) {
-      vergelijk_bool[i] = true;
-      teller++;
+void vergelijk_fout(){
+  for (int i = 0; i<=loper_morse; i++){
+    if(morse[i] != binnenkomend[i]) {
+      lcd.setCursor(0,1);
+      lcd.print("Fout");
     }
   }
-
-  if (teller == lengteMorse ){
-    lcd.setCursor(0,1);
-    lcd.print("6");
-    lcd.setCursor(0,2);
-    lcd.print("Boekenrek");
-    client.publish("esp32/morse/intern", "correct");
-    client.publish("esp32/morse/output", "einde_morse");
-  } 
 }
 
+void vergelijk(){
+  int teller_vergelijk = 0;
+  for (int i = 0; i<lengteMorse; i++){
+    if(morse[i] == binnenkomend[i]) {
+      teller_vergelijk++;
+    }
+    
+  }
+
+  if (teller_vergelijk == lengteMorse ){
+    //Serial.print("nu is random "); Serial.print(random_alohomora);
+    if(eerste_keer == 1){
+      srand(time(0));
+      random_alohomora = rand() % 10;
+      eerste_keer = 0;
+      Serial.print("\n");
+      Serial.print("random getal: ");
+      Serial.print(random_alohomora);
+      client.publish("esp32/morse/intern", "correct"); //speaker stopt met morse
+      client.publish("esp32/morse/output", "einde_morse"); //auto kan geactiveerd worden
+      String random_string_alohomora = (String)(random_alohomora);
+      const char *random_char_alohomora = random_string_alohomora.c_str();
+      //of via itoa
+      client.publish("esp32/alohomora/code/2", random_char_alohomora); //random nummer wordt doorgestuurd naar alohomora
+    }
+    lcd.setCursor(0,1);
+    lcd.print(random_alohomora);
+    lcd.setCursor(0,2);
+    lcd.print("Boekenrek");
+  }
+}
 
 
 /********************************
           LOOP
-          // callback function, only used when receiving messages
 *********************************/
 void loop() {
     /*String messageTemp = "3";
@@ -302,11 +319,6 @@ if (!client.connected()){
   reconnect();
 }
  client.loop();
- if (test == 0){
-  client.publish("esp32/morse/intern", "correcte code");
-  Serial.print("doorgestuurd");
-  test++;
-}
   button.loop();
   if(button.isPressed()){
     //volgorde = {100};
@@ -316,7 +328,6 @@ if (!client.connected()){
       Serial.print(" \t");
       loper_morse = 0;
     }
-    ////////////////////////////////////////////////////////////////////////////////////////////klopt deze?
     for (int i = 0; i<100; i++){ //limiet zeker nakijken
       volgorde[i] = {0};
     }
@@ -368,6 +379,7 @@ if (!client.connected()){
     //Serial.print(" stil gedetecteerd \t");
   }
   vergelijk();
+  vergelijk_fout();
 
   //delay(20);
   delay(2);
