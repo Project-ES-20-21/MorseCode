@@ -11,8 +11,8 @@ using namespace std;
 LiquidCrystal_I2C lcd(0x27, 21, 4);
 WiFiClient espClient;
 
-#define SSID          "iPhone van Van de Peer" // /*"OnePlus jeff"*/ "NETGEAR68" //"DESKTOP-CEC32AM 8066"        //naam
-#define PWD           "Annquisar9" ///*"jeffhotspot"*/ "excitedtuba713" //"]16b571H"   //wachtwoord
+#define SSID           // /*"OnePlus jeff"*/ "NETGEAR68" //"DESKTOP-CEC32AM 8066"        //naam
+#define PWD           ///*"jeffhotspot"*/ "excitedtuba713" //"]16b571H"   //wachtwoord
 
 #define MQTT_SERVER   "broker.mqttdashboard.com"
 #define MQTT_PORT     1883
