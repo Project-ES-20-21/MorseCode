@@ -11,10 +11,10 @@ using namespace std;
 LiquidCrystal_I2C lcd(0x27, 21, 4);
 WiFiClient espClient;
 
-#define SSID          "OnePlus jeff" ///*"NETGEAR68"*/ "DESKTOP-CEC32AM 8066"        //naam
-#define PWD           "jeffhotspot" ///*"excitedtuba713"*/ "]16b571H"   //wachtwoord
+#define SSID          "iPhone van Van de Peer" // /*"OnePlus jeff"*/ "NETGEAR68" //"DESKTOP-CEC32AM 8066"        //naam
+#define PWD           "Annquisar9" ///*"jeffhotspot"*/ "excitedtuba713" //"]16b571H"   //wachtwoord
 
-#define MQTT_SERVER   "broker.hivemq.com"
+#define MQTT_SERVER   "broker.mqttdashboard.com"
 #define MQTT_PORT     1883
 
 PubSubClient client(espClient);
@@ -45,7 +45,7 @@ int loper_binnenkomend = 0;
 int lengteMorse = 44;
 int morse[44] = {0};
 
-int binnenkomend[44] = {0}; //{0, 1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 2};
+int binnenkomend[44] = {0, 1};
 char binnenkomend_char[44] = {'0'};
 
 int eerste_keer = 1;
@@ -56,6 +56,8 @@ int som_alternatief = 0;
 
 int pauze_afstand = 0;
 int pauze_fitness = 0;
+
+int einde = 0;
 
 ezButton button(18);
 
@@ -70,7 +72,6 @@ void callback(char *topic, byte *message, unsigned int length)
   Serial.print(topic);
   Serial.print(". Message: ");
   String messageTemp;
-  //int messageTempArray[lengteMorse];
 
   for (int i = 0; i < length; i++)
   {
@@ -79,21 +80,29 @@ void callback(char *topic, byte *message, unsigned int length)
   }
   Serial.println();
 
-  // Feel free to add more if statements to control more GPIOs with MQTT
-  // When receiving a message on "esp32/control" a check should be excecuted
-
-  // If a message is received on the topic esp32/control, you check if the message is either "start" or "stop" (or "reset").
-  // Changes the state according to the message
-  if (String(topic) == "esp32/control"){
+  //kanalen van main broker
+  if (String(topic) == "esp32/morse/control"){
     if(messageTemp.equals("0")){ //reset
       Serial.println("Reset");
+      pauze_afstand = 0;
+      pauze_fitness = 0;
+      eerste_keer = 1;
+      lcd.clear();
+      //binnenkomend[] = {0, 1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 2};
       for (int i = 0; i<44; i++){
         binnenkomend[i] = 0;
+      }
+      binnenkomend[1] = 1;
+      loper_binnenkomend = 0;
+      einde = 0;
+      for (int i = 0; i<44; i++){
+        Serial.print(binnenkomend[i]);
       }
     }
     if(messageTemp.equals("1")){ //stop (afstand)
       pauze_afstand = 1;
       Serial.println("pauze_afstand");
+      lcd.clear();
     }
     if(messageTemp.equals("2")){ //start (ontsmetten)
       pauze_afstand = 0;
@@ -102,20 +111,25 @@ void callback(char *topic, byte *message, unsigned int length)
     if(messageTemp.equals("3")){ //poweroff (stop fitness)
       pauze_fitness = 1;
       Serial.println("pauze_fitness");
+      lcd.clear();
     }
     if(messageTemp.equals("4")){ //poweron (start fitness)
       pauze_fitness = 0;
       Serial.println("pauze_fitness");     
     }
   }
+
+  //kanalen van en naar speaker
   else if (String(topic) = "esp32/morse/intern"){
     binnenkomend[loper_binnenkomend] = atoi(messageTemp.c_str());
     loper_binnenkomend++;
     
-    /*for (int i = 0; i<44; i++){
-  Serial.print(binnenkomend[i]);
-  }*/
+    for (int i = 0; i<44; i++){
+      Serial.print(binnenkomend[i]);
+    }
   }
+
+  //kanalen van telefoon
   else if (String(topic) == "esp32/fitness/telefoon"){
     if(messageTemp.equals("BEL")){
       lcd.backlight();
@@ -124,7 +138,7 @@ void callback(char *topic, byte *message, unsigned int length)
 }
 
 /********************************
-            MQTT
+        MQTT & Wifi
 *********************************/
 void setup_wifi(){
   delay(10);
@@ -155,8 +169,9 @@ void reconnect(){
     {
       Serial.println("connected");
       // Subscribe
-      client.subscribe("esp32/control");
+      client.subscribe("esp32/morse/control");
       client.subscribe ("esp32/morse/intern");
+      client.subscribe("esp32/fitness/telefoon");
     }
     else
     {
@@ -177,10 +192,12 @@ void setup() {
   Serial.begin(115200);
   pinMode(led, OUTPUT);
 
+  button.setDebounceTime(100);
+
   // initialize LCD
   lcd.init();
   // turn on LCD backlight                      
-  //lcd.backlight(); --> pas wanneer het aan deze puzzel is
+  lcd.backlight();
 
   setup_wifi();
   client.setServer(MQTT_SERVER, MQTT_PORT);
@@ -189,7 +206,7 @@ void setup() {
 
 
 /********************************
-          MORSE CODE
+        MORSE METHODS
 *********************************/
 int som(int rij[100]){
   int som = 0;
@@ -233,7 +250,7 @@ void voegToeMorse(int signaal){
       lcd.setCursor(loper_display,0);
       lcd.print(".");
       //Serial.print(".");
-      Serial.print(loper_display);
+      //Serial.print(loper_display);
       loper_display++;
     }
     else if(signaal == 2) {
@@ -241,7 +258,7 @@ void voegToeMorse(int signaal){
       lcd.setCursor(loper_display-1,0);
       //Serial.print("_");
       lcd.print("_");
-      Serial.print(loper_display);
+      //Serial.print(loper_display);
     }
   }
   if (signaal == LANG){
@@ -293,7 +310,8 @@ void vergelijk(){
       String random_string_alohomora = (String)(random_alohomora);
       const char *random_char_alohomora = random_string_alohomora.c_str();
       //of via itoa
-      client.publish("esp32/alohomora/code/2", random_char_alohomora); //random nummer wordt doorgestuurd naar alohomora
+      client.publish("esp32/alohomora/code2", random_char_alohomora); //random nummer wordt doorgestuurd naar alohomora
+      einde = 1;
     }
     lcd.setCursor(0,1);
     lcd.print(random_alohomora);
@@ -304,15 +322,9 @@ void vergelijk(){
 
 
 /********************************
-          LOOP
+          MORSE LOOP
 *********************************/
 void loop() {
-    /*String messageTemp = "3";
-    binnenkomend[loper_binnenkomend] = atoi(messageTemp.c_str());
-    Serial.print(binnenkomend[loper_binnenkomend]);
-    loper_binnenkomend++;
-*/
-
 
 //////////////////////////////////wifi connect
 if (!client.connected()){
@@ -320,7 +332,7 @@ if (!client.connected()){
 }
  client.loop();
   button.loop();
-  if(button.isPressed()){
+  if(button.isPressed() && einde == 0){
     //volgorde = {100};
     for (int i = 0; i<lengteMorse; i++){
       morse[i] = 0;
@@ -335,7 +347,7 @@ if (!client.connected()){
     loper_display = 0;
   }
 
-  if(button.getStateRaw() == 0 && pauze_afstand == 0 && pauze_fitness == 0){ //button is active high
+  if(button.getStateRaw() == 0 && pauze_afstand == 0 && pauze_fitness == 0 && einde == 0){ //button is active high
   //Serial.println("The button is pressed");
   
   //input lezen op pin X
