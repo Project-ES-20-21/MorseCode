@@ -12,10 +12,10 @@ using namespace std;
 LiquidCrystal_I2C lcd(0x27, 21, 4);
 WiFiClient espClient;
 
-#define SSID           // /*"OnePlus jeff"*/ "NETGEAR68" //"DESKTOP-CEC32AM 8066"        //naam
-#define PWD           ///*"jeffhotspot"*/ "excitedtuba713" //"]16b571H"   //wachtwoord
+#define SSID          /*"OnePlus jeff"*/ "NETGEAR68" //"DESKTOP-CEC32AM 8066"        //naam
+#define PWD           /*"jeffhotspot"*/ "excitedtuba713" //"]16b571H"   //wachtwoord
 
-#define MQTT_SERVER   "broker.mqttdashboard.com"
+#define MQTT_SERVER   "192.168.1.2"
 #define MQTT_PORT     1883
 
 PubSubClient client(espClient);
@@ -58,6 +58,7 @@ int som_alternatief = 0;
 int pauze_afstand = 0;
 int pauze_fitness = 0;
 
+int start = 1;
 int einde = 0;
 
 ezButton button(18);
@@ -84,7 +85,11 @@ void callback(char *topic, byte *message, unsigned int length)
   //kanalen van main broker
   if (String(topic) == "esp32/morse/control"){
     if(messageTemp.equals("0")){ //reset
-      Serial.println("Reset");
+      WiFi.disconnect();
+      delay(10);
+      ESP.restart();
+
+      /*Serial.println("Reset");
       pauze_afstand = 0;
       pauze_fitness = 0;
       eerste_keer = 1;
@@ -95,10 +100,14 @@ void callback(char *topic, byte *message, unsigned int length)
       }
       binnenkomend[1] = 1;
       loper_binnenkomend = 0;
+      for (int i = 0; i<44; i++){
+        morse[i] = 0;
+      }
+      loper_morse = 0;
       einde = 0;
       for (int i = 0; i<44; i++){
         Serial.print(binnenkomend[i]);
-      }
+      }*/
     }
     if(messageTemp.equals("1")){ //stop (afstand)
       pauze_afstand = 1;
@@ -121,7 +130,7 @@ void callback(char *topic, byte *message, unsigned int length)
   }
 
   //kanalen van en naar speaker
-  else if (String(topic) = "esp32/morse/intern"){
+  else if (String(topic) == "esp32/morse/intern"){
     binnenkomend[loper_binnenkomend] = atoi(messageTemp.c_str());
     loper_binnenkomend++;
     
@@ -130,10 +139,15 @@ void callback(char *topic, byte *message, unsigned int length)
     }
   }
 
+  else if(String(topic) == "esp32/morse/speaker_end"){
+    start = 0;
+  }
+
   //kanalen van telefoon
   else if (String(topic) == "esp32/fitness/telefoon"){
     if(messageTemp.equals("BEL")){
       lcd.backlight();
+     // Serial.println(loper_binnenkomend);
     }
   }
 }
@@ -172,6 +186,7 @@ void reconnect(){
       // Subscribe
       client.subscribe("esp32/morse/control");
       client.subscribe ("esp32/morse/intern");
+      client.subscribe ("esp32/morse/speaker_end");
       client.subscribe("esp32/fitness/telefoon");
     }
     else
@@ -198,7 +213,7 @@ void setup() {
   // initialize LCD
   lcd.init();
   // turn on LCD backlight                      
-  lcd.backlight();
+  //lcd.backlight();
 
   setup_wifi();
   client.setServer(MQTT_SERVER, MQTT_PORT);
@@ -317,7 +332,7 @@ void vergelijk(){
     lcd.setCursor(0,1);
     lcd.print(random_alohomora);
     lcd.setCursor(0,2);
-    lcd.print("Boekenrek");
+    lcd.print("VUILBAK");
   }
 }
 
@@ -348,7 +363,7 @@ if (!client.connected()){
     loper_display = 0;
   }
 
-  if(button.getStateRaw() == 0 && pauze_afstand == 0 && pauze_fitness == 0 && einde == 0){ //button is active high
+  if(button.getStateRaw() == 0 && pauze_afstand == 0 && pauze_fitness == 0 && einde == 0 && start == 0){ //button is active high
   //Serial.println("The button is pressed");
   
   //input lezen op pin X
@@ -391,8 +406,9 @@ if (!client.connected()){
     voegToeMorse(STIL);
     //Serial.print(" stil gedetecteerd \t");
   }
-  vergelijk();
   vergelijk_fout();
+  vergelijk();
+  
 
   //delay(20);
   delay(2);
