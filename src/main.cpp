@@ -46,7 +46,7 @@ int loper_binnenkomend = 0;
 int lengteMorse = 44;
 int morse[44] = {0};
 
-int binnenkomend[44] = {0, 1};
+int binnenkomend[44] = {0, 1, 0, 1};
 char binnenkomend_char[44] = {'0'};
 
 int eerste_keer = 1;
