@@ -12,10 +12,10 @@ using namespace std;
 LiquidCrystal_I2C lcd(0x27, 21, 4);
 WiFiClient espClient;
 
-#define SSID          /*"OnePlus jeff"*/ "NETGEAR68" //"DESKTOP-CEC32AM 8066"        //naam
-#define PWD           /*"jeffhotspot"*/ "excitedtuba713" //"]16b571H"   //wachtwoord
+#define SSID          "Sarah" ///*"OnePlus jeff"*/ "NETGEAR68" //"DESKTOP-CEC32AM 8066"        //naam
+#define PWD           "yoloxdxp" ///*"jeffhotspot"*/ "excitedtuba713" //"]16b571H"   //wachtwoord
 
-#define MQTT_SERVER   "192.168.1.2"
+#define MQTT_SERVER   "broker.mqttdashboard.com" //"192.168.1.2"
 #define MQTT_PORT     1883
 
 PubSubClient client(espClient);
@@ -113,19 +113,37 @@ void callback(char *topic, byte *message, unsigned int length)
       pauze_afstand = 1;
       Serial.println("pauze_afstand");
       lcd.clear();
+      lcd.noBacklight();
+      for (int i = 0; i<lengteMorse; i++){
+      morse[i] = 0;
+      //Serial.print(morse[i]);
+      //Serial.print(" \t");
+      loper_morse = 0;
+      loper_display = 0;
+    }
     }
     if(messageTemp.equals("2")){ //start (ontsmetten)
       pauze_afstand = 0;
       Serial.println("pauze_afstand");
+      lcd.backlight();
     }
     if(messageTemp.equals("3")){ //poweroff (stop fitness)
       pauze_fitness = 1;
       Serial.println("pauze_fitness");
       lcd.clear();
+      lcd.noBacklight();
+      for (int i = 0; i<lengteMorse; i++){
+      morse[i] = 0;
+      //Serial.print(morse[i]);
+      //Serial.print(" \t");
+      loper_morse = 0;
+      loper_display = 0;
+    }
     }
     if(messageTemp.equals("4")){ //poweron (start fitness)
       pauze_fitness = 0;
-      Serial.println("pauze_fitness");     
+      Serial.println("pauze_fitness"); 
+      lcd.backlight();    
     }
   }
 
@@ -352,8 +370,8 @@ if (!client.connected()){
     //volgorde = {100};
     for (int i = 0; i<lengteMorse; i++){
       morse[i] = 0;
-      Serial.print(morse[i]);
-      Serial.print(" \t");
+      //Serial.print(morse[i]);
+      //Serial.print(" \t");
       loper_morse = 0;
     }
     for (int i = 0; i<100; i++){ //limiet zeker nakijken
